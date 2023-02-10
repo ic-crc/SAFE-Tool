@@ -44,6 +44,6 @@ def get_total_foliage_depth(tx, rx, terrain_h, surface_h):
     total_foliage_depth = len(points_in_between_s_and_t)/resolution
     
     # Get avg tree height in path
-    avg_tree_h_in_path = np.mean(points_in_between_s_and_t)
+    avg_tree_h_in_path = np.mean(points_in_between_s_and_t) if len(points_in_between_s_and_t) > 0 else 0
 
     return total_foliage_depth, avg_tree_h_in_path, theta
