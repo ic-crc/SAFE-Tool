@@ -6,14 +6,7 @@ from propagation.p1812.great_circle_path import great_circle_path
 from propagation.p1812.InterpolateDN50andN050CTR import InterpolateDN50andN050CTR
 from propagation.top_diffraction import topDiffraction
 
-RET_DB_LIMIT = 30 # dB
-
-ZONE_COASTAL = 3
-ZONE_INLAND = 4
-
-# Water (1), open (2), suburban (3), urban/trees (4), Dense urban (5)  
-# Water (0), open (0), suburban (10), urban/trees (15), Dense urban (20)  
-CLUTTER_VALUES = {2: 0, 3: 10, 4: 15, 5:20}
+from propagation.config import RET_DB_LIMIT, ZONE_COASTAL, ZONE_INLAND, CLUTTER_VALUES, TIME_PERCENTAGE_P1812, LOCATION_PERCENTAGE_P1812
 
 def compute_p1812(tx, rx, surface_h, terrain_h, distance_to_tower, clutter_type=3):
 
@@ -54,9 +47,7 @@ def get_p1812_output(d, h, R, Ct, zone, tx, rx):
     DN50PCR, N050PCR = InterpolateDN50andN050CTR(Phipntn,(Phipnte + 360))
 
     # flag4 should be set to 0. No need to set it here (done in tl_p1812).
-    time_percentage = 50
-    location_percentage = 50
-    Lb = tl_p1812SAFE(freq, time_percentage, d, h, R, Ct, zone, tx.height, rx.height, 2, tx.lat, rx.lat, tx.lon, rx.lon, location_percentage, 0, DN50PCR, N050PCR); # New format for P.1812-6.
+    Lb = tl_p1812SAFE(freq, TIME_PERCENTAGE_P1812, d, h, R, Ct, zone, tx.height, rx.height, 2, tx.lat, rx.lat, tx.lon, rx.lon, LOCATION_PERCENTAGE_P1812, 0, DN50PCR, N050PCR); # New format for P.1812-6.
 
     return round(Lb, 6)
 
@@ -73,18 +64,15 @@ def get_theta(rx, tx, elevProfile, distance_to_tower):
 def get_SAFE_path_loss(tx, rx, p1812_path_loss_no_clutter, foliage_depth, avg_tree_h, theta):
     
     # Ret model
-    tree_loss = ret_model_computation(foliage_depth, theta, tx.frequency, rx.beamwidth)[0][0] if foliage_depth not in (-1, -2) else 0
+    tree_loss = ret_model_computation(foliage_depth, theta, tx.frequency, rx.beamwidth)[0][0] if foliage_depth > 0 else 0
     
     # Top diffraction model
-    top_diffraction = topDiffraction(tx.frequency/1000, theta, avg_tree_h, foliage_depth, rx.height)
+    top_diffraction = topDiffraction(tx.frequency/1000, theta, avg_tree_h, foliage_depth, rx.height) if foliage_depth > 0 else 0
     
     # Linear sum of the RET and Top Diffraction model
     ret_plus_top = -10 * np.log10(sum([pow(10, top_diffraction/10), pow(10, -tree_loss/10)]))
 
     # Total Path Loss (dB)
-    if tree_loss > RET_DB_LIMIT:
-        safe_path_loss = p1812_path_loss_no_clutter + RET_DB_LIMIT
-    else:    
-        safe_path_loss = p1812_path_loss_no_clutter + tree_loss 
-   
+    safe_path_loss = p1812_path_loss_no_clutter + min(tree_loss, RET_DB_LIMIT)
+
     return tree_loss, top_diffraction, ret_plus_top, safe_path_loss

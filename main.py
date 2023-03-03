@@ -5,8 +5,8 @@ def main():
     
     # declaring Tx and Rx
     index = 0
-    tx = Tx(lat = 45.35755587724909, lon = -75.89139665209142, height = 10, band = 3500)
-    rx = Rx(lat = 45.3532516568705, lon = -75.84831022990471, height = 10)
+    tx = Tx(45.473870457910564, -75.90535057848327, height = 30, band = 3500)
+    rx = Rx(45.49102165209113, -75.90937433346998, height = 3.7)
 
     # running single simulation
     print(f"\nRunning simulation\n")
