@@ -6,6 +6,7 @@ from plot import plot_tx_to_rx_path
 from propagation.path import get_path_length_below_terrain, get_total_foliage_depth
 from propagation.pathloss  import get_SAFE_path_loss, compute_p1812
 from propagation.tower import get_distance_to_tower
+from propagation.config import MINIMAL_ANGLE_OF_INCIDENCE
 
 def compute_safe_metrics(index, tx, rx):
 
@@ -26,10 +27,12 @@ def compute_safe_metrics(index, tx, rx):
 
     # Compute p1812 with and without clutter (dB)
     p1812_no_clutter = compute_p1812(tx, rx, terrain_h, terrain_h, distance_to_tower)
-    p1812_path_loss = compute_p1812(tx, rx, surface_h, terrain_h, distance_to_tower, clutter_type=4) if hrdem_available else 0
+    p1812_path_loss = compute_p1812(tx, rx, surface_h, terrain_h, distance_to_tower, clutter_type=4) if hrdem_available else p1812_no_clutter
 
     # compute other loss and total path loss
     tree_loss, top_diffraction, ret_plus_top, safe_path_loss = get_SAFE_path_loss(tx, rx, p1812_no_clutter, total_foliage_depth, avg_tree_h_in_path, theta) if hrdem_available else (0, 0, 0, p1812_no_clutter)
+    
+    safe_path_loss = safe_path_loss if theta > MINIMAL_ANGLE_OF_INCIDENCE else p1812_path_loss
     
     # Plot plot_tx_to_rx_path
     # Create output folder
