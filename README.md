@@ -70,3 +70,15 @@ All the downloads needed are made within the script.
 
 [4] P.833 : Attenuation in vegetation (https://www.itu.int/rec/R-REC-P.833-10-202109-I/en)
 
+## Citation
+
+If you find this work useful, please cite it as:
+```
+@article{ha2022SAFETool,
+  title   = "SAFE tool",
+  author  = "Chateauvert, Mathieu, Ethier, Jonathan and Bouchard, Pierre",
+  year    = "2022",
+  publisher = "Communication Research Centre, Canada",
+  url     = "https://github.com/ic-crc/SAFE-Tool”
+}
+```
