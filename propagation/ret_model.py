@@ -41,7 +41,7 @@ def Fn(idxn,mu,mu_n,N):
 
 ############ MAIN CODE ############### 
 
-def ret_model_computation(Depth_fromPipeline, thetaP_fromPipeline, frequency, Rx_beamwidth=10.8, Foliage_type="conifer", in_leaf = True):
+def ret_model_computation(Depth_fromPipeline, thetaP_fromPipeline, frequency, Rx_beamwidth=10.8, Foliage_type="", in_leaf = True):
     
     # Base station parameters
     f = frequency/1E9 # Frequency
