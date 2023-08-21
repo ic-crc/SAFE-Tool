@@ -4,7 +4,7 @@ from safe_metrics import compute_safe_metrics
 def main(): 
     
     # declaring Tx and Rx
-    index = 0
+    index = 1
     tx = Tx(45.473870457910564, -75.90535057848327, height = 30, band = 3500)
     rx = Rx(45.49102165209113, -75.90937433346998, height = 3)
 
