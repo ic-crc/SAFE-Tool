@@ -91,3 +91,14 @@ P.1812 : A path-specific propagation prediction method for point-to-area terrest
     OTHER DEALINGS IN THE SOFTWARE.
 
     THE AUTHOR(S) AND OFCOM (CH) DO NOT PROVIDE ANY SUPPORT FOR THIS SOFTWARE 
+
+## ESA WorldCover
+The ESA WorldCover product is provided free of charge, without restriction of use. For the full license information see the Creative Commons Attribution 4.0 International License.
+
+Publications, models and data products that make use of these datasets must include proper acknowledgement, including citing the datasets and the journal article as in the following citation.
+
+If you are using the data as a layer in a published map, please include the following attribution text:
+© ESA WorldCover project / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium
+
+To cite these maps as data source in your publication, please add: Zanaga, D., Van De Kerchove, R., Daems, D., De Keersmaecker, W., Brockmann, C., Kirches, G., Wevers, J., Cartus, O., Santoro, M., Fritz, S., Lesiv, M., Herold, M., Tsendbazar, N.E., Xu, P., Ramoino, F., Arino, O., 2022. ESA WorldCover 10 m 2021 v200.
+https://doi.org/10.5281/zenodo.7254221 
