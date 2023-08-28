@@ -12,7 +12,7 @@ def compute_safe_metrics(index, tx, rx):
 	
 	# Get distance path between tx and rx
 	distance_to_tower = get_distance_to_tower((rx.lat, rx.lon), (tx.lat, tx.lon))
-	if distance_to_tower < 1: return None
+	if distance_to_tower < 1: return None # If distance is less than 1 meter, return None
 	
  	# Get path profile from HRDEM dataset
 	surface_height, terrain_height = return_elevation_profile((rx.lat, rx.lon), (tx.lat, tx.lon), distance_to_tower)
@@ -25,8 +25,8 @@ def compute_safe_metrics(index, tx, rx):
 		
 	# Extract clutter features
 	clutter_path_by_type = clutter_path_feature_count(clutter_path)
-	clutter_depth_by_type, total_clutter_depth, avg_clutter_h_by_type, avg_clutter_h_in_path, first_intersection_point_m, last_intersection_point_m, theta = get_clutter_features(
-		tx, rx, surface_height, terrain_height, clutter_path)
+	clutter_depth_by_type, total_clutter_depth, avg_clutter_h_by_type, avg_clutter_h_in_path, first_intersection_point_m, last_intersection_point_m, theta = \
+     get_clutter_features(tx, rx, surface_height, terrain_height, clutter_path)
 
 	# Get path length below terrain (m)
 	total_terrain_depth = get_path_length_below_terrain(terrain_height, tx.height, rx.height)
@@ -36,8 +36,8 @@ def compute_safe_metrics(index, tx, rx):
 	p1812_path_loss = compute_p1812(tx, rx, surface_height, terrain_height, distance_to_tower, clutter_type=4) if hrdem_available else p1812_no_clutter
 
 	# compute other loss and total path loss
-	tree_loss, top_diffraction, ret_plus_top, safe_path_loss = get_SAFE_path_loss(
-		tx, rx, p1812_no_clutter, total_clutter_depth, avg_clutter_h_in_path, theta) if hrdem_available else (0, 0, 0, p1812_no_clutter)
+	tree_loss, top_diffraction, ret_plus_top, safe_path_loss = \
+     get_SAFE_path_loss(tx, rx, p1812_no_clutter, total_clutter_depth, avg_clutter_h_in_path, theta) if hrdem_available else (0, 0, 0, p1812_no_clutter)
 	
 	# Plot and save path profile
 	save_folder = join(dirname(realpath(__file__)), "data")

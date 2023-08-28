@@ -128,4 +128,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-data/
+data/*
+!data/color_legend.png
+!data/example.png
