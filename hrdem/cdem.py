@@ -50,7 +50,7 @@ def replace_elevation_profile(full_terrain, group, direction_LOS, tx_point, surf
     distance = (group[-1]-group[0])
     steps = int(distance / 30)
 
-    # print("Accessing Geogratis API for elevation at 30m resolution")
+    print("Accessing Geogratis API for elevation at 30m resolution (Could take longer...)")
     url_terrain = f"http://geogratis.gc.ca/services/elevation/{surface}/profile?path=LINESTRING({pointA[1]}%20{pointA[0]},%20{pointB[1]}%20{pointB[0]})&steps={steps}"
     request_terrain = requests.get(url_terrain)
 

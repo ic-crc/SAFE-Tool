@@ -48,11 +48,6 @@ conda create --name SAFE --file requirements.txt -c conda-forge
 conda activate SAFE
 ```
 
-You also need wget, as it can't be installed automatically : 
-```
-pip install wget
-```
-
 After installation, you can run the SAFE tool by running main.py.
 ```
 python main.py

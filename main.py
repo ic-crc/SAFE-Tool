@@ -6,13 +6,14 @@ def main():
     # declaring Tx and Rx
     index = 0
     tx = Tx(45.473870457910564, -75.90535057848327, height = 30, frequency = 3500)
-    rx = Rx(45.49102165209113, -75.90937433346998, height = 5)
+    rx = Rx(45.209584832872444, -76.28604664049735, height = 5)
 
     # running single simulation
     print(f"\nRunning simulation\n")
     metrics = compute_safe_metrics(index, tx, rx)
 
     if metrics:
+        print("**Metrics**")
         print(f"Clutter Path by Type : {metrics.get('clutter_path_by_type')} meters")
         print(f"Clutter Depth by Type : {metrics.get('clutter_depth_by_type')} meters")
         print(f"Total Clutter Depth : {metrics.get('total_clutter_depth')} meters")

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 land_cover_colors = {0: "#000000", 10: "#006400", 20: "#ffbb22", 30: "#ffff4c", 40: "#f096ff", 50: "#fa0000", 60: "#b4b4b4", 70: "#f0f0f0", 80: "#0064c8", 90: "#0096a0", 95: "#00cf75", 100: "#fae6a0"}
 
-def plot_tx_to_rx_path(surface_height, terrain_height, clutter_path, tx_height, rx_height, save_folder, index, high_resolution_plot=False):
+def plot_tx_to_rx_path(surface_height, terrain_height, clutter_path, tx_height, rx_height, save_folder, index):
 
     fig, ax = plt.subplots(figsize=(15,5))
     ax.set_title(f"2D elevation profile - Index {index}")
@@ -21,7 +21,8 @@ def plot_tx_to_rx_path(surface_height, terrain_height, clutter_path, tx_height, 
     ax.plot([0, odu_pos], [tx_height + terrain_height[0], rx_height + terrain_height[-1]], 'r-')
     
     width = 0
-    step = 10 if high_resolution_plot else 1
+    high_resolution_plot = (len(surface_height) < 3000)
+    step = 1 if high_resolution_plot else 10
     
     # Add surface
     for clutter, h in zip(clutter_path, surface_height):
