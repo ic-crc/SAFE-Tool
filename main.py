@@ -6,7 +6,7 @@ def main():
     # declaring Tx and Rx
     index = 0
     tx = Tx(45.473870457910564, -75.90535057848327, height = 30, frequency = 3500)
-    rx = Rx(45.209584832872444, -76.28604664049735, height = 5)
+    rx = Rx(45.49102165209113, -75.90937433346998, height = 5)
 
     # running single simulation
     print(f"\nRunning simulation\n")
