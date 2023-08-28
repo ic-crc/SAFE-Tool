@@ -15,11 +15,11 @@ def get_heading(latlon, tower_latlon):
     return direction
 
 class Tx:
-    def __init__(self, lat, lon, height, band):
+    def __init__(self, lat, lon, height, frequency):
         self.lat = lat
         self.lon = lon
         self.height = height if height >= 1 else 1
-        self.frequency = band # in MHz
+        self.frequency = frequency # in MHz
 
 class Rx:
     def __init__(self, lat, lon, height, beamwidth = 10.8):

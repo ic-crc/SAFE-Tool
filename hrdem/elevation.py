@@ -1,154 +1,161 @@
 import numpy as np
-import requests
+import pyproj
+import rasterio as rio
 
-from geopy.distance import geodesic
-from utm import from_latlon
-from os.path import join
+from hrdem.hrdem_esa import get_hrdem_along_path, get_esa_along_path
 
-from hrdem.hrdem import get_dtm_dsm_index_along_path, get_dataset_footprint, out_folder_numpy
-from propagation.tower import get_heading
+def compute_tx_rx_path(lat_lon, tower_latlon, distance_to_tower):
+    # Linearly interpolate the path between the tower and receiver at 1m intervals
+    path_coords = (np.linspace(tower_latlon[0], lat_lon[0], distance_to_tower), np.linspace(tower_latlon[1], lat_lon[1], distance_to_tower))
 
-dataset_fp = get_dataset_footprint()
-
-def double_array(array):
-    new_arr = np.repeat(np.repeat(array, 2, axis=1), [2]*len(array), axis=0)
-    return new_arr.astype(float)
-
-def compute_x_y_index(lat_lon, tower_latlon, distance_to_tower, utm_number):
-    
-    # get all the index of the line between rx and tx
-    x_tx, y_tx, _, _ = from_latlon(tower_latlon[0], tower_latlon[1], utm_number)
-    x_rx, y_rx, _, _ = from_latlon(lat_lon[0], lat_lon[1], utm_number)
-    x_index, y_index = np.linspace(round(x_tx), round(x_rx), distance_to_tower), np.linspace(round(y_tx), round(y_rx), distance_to_tower)
-
-    return x_index, y_index
-
-def read_numpy_array(hrdem_idx): 
-    with open(join(out_folder_numpy, f"{hrdem_idx}.npy"), 'rb') as f:
-        dsm_array = np.load(f)
-        dtm_array = np.load(f)
-        bounds = np.load(f)
-                
-        # Replace all negative measurements to 0
-        dsm_array[dsm_array<0] = 0
-        dtm_array[dtm_array<0] = 0
-
-        # If file has a 2m resolution
-        if abs(bounds[2] - bounds[0]) == 20_000 and abs(bounds[3] - bounds[1]) == 20_000:
-            dsm_array = double_array(dsm_array)
-            dtm_array = double_array(dtm_array)
-            
-    return dsm_array, dtm_array, bounds
+    return path_coords
 
 
 def return_elevation_profile(lat_lon, tower_latlon, distance_to_tower):
 
-    intersection_line, utm_number = get_dtm_dsm_index_along_path(dataset_fp, lat_lon, tower_latlon)
-    
+    # Get the HRDEM tiles that intersect the path
+    hrdem_intersection_line = get_hrdem_along_path(lat_lon, tower_latlon)
+
     # Return if no HRDEM tiles are available
-    if len(intersection_line) == 0:
+    if len(hrdem_intersection_line) == 0:
         return np.zeros(distance_to_tower), np.zeros(distance_to_tower)
-        
-    # If tiles have been found
-    x_index, y_index = compute_x_y_index(lat_lon, tower_latlon, distance_to_tower, utm_number)
-    
-    # Initialize arrays
-    full_surface_h = np.zeros(len(x_index)) ; full_terrain_h = np.zeros(len(x_index)) ; seen_segment = []; segment_already_full = []
-    
-    # For tiles within that segment (multiple HRDEM could be on top of each other)
-    for hrdem_idx, itrsct in intersection_line.values:
-        
+
+    # Initialize HRDEM surface and terrain height arrays
+    full_surface_h = np.zeros(distance_to_tower)
+    full_terrain_h = np.zeros(distance_to_tower)
+    segment_already_full = []
+
+    # Get the interpolated lat lon coordinates along the path from the tower to the receiver
+    tx_rx_path_lat_lon = compute_tx_rx_path(lat_lon, tower_latlon, distance_to_tower)
+
+    # Loop through tiles that intersect the path (multiple HRDEM could be on top of each other (newest tiles sorted first))
+    for project_id, itrsct in hrdem_intersection_line.values:
+
         # If more recent HRDEM points already have been added
         if itrsct in segment_already_full: continue
-            
-        # read numpy array from pre-downloaded folder
-        dsm_array, dtm_array, bounds = read_numpy_array(hrdem_idx)
 
-        # Extract idx within that tile
-        idx_list = [(int(obj[0]-bounds[0]), int((bounds[3]-bounds[1]) - (obj[1]-bounds[1])), d) for d, obj in enumerate(zip(x_index, y_index)) if bounds[2] > int(obj[0]) >= bounds[0] and bounds[3] >= int(obj[1]) > bounds[1]]
-        
-        if len(idx_list) == 0: continue
-        
-        # Unzip idx 
-        x_idx, y_idx, d = zip(*idx_list)
-        x_idx = np.array(x_idx); y_idx = np.array(y_idx); d_list = list(d)
+        dsm_s3_path = f"s3://datacube-prod-data-public/store/elevation/hrdem/hrdem-lidar/{project_id}-dsm.tif"
+        dtm_s3_path = f"s3://datacube-prod-data-public/store/elevation/hrdem/hrdem-lidar/{project_id}-dtm.tif"
 
-        # Do this only once per segment (for speed purpose)
-        # if the x_index, y_index has not been extracted for that segment
-        if itrsct not in seen_segment :
-            seen_segment.append(itrsct)
-            # Extract elevation profile for that tile    
-            full_surface_h[d_list] = dsm_array[(y_idx, x_idx)]                    
-            full_terrain_h[d_list] = dtm_array[(y_idx, x_idx)]                    
+        with rio.open(dsm_s3_path) as dsm_tif:
+            with rio.open(dtm_s3_path) as dtm_tif:
 
-        # For the second, third, ... tile, for the same x_index, y_index as before
-        # We compute the elevation profile 
-        else:
-            full_surface_h[d_list] = np.where(full_surface_h[d_list] == 0, dsm_array[(y_idx, x_idx)], full_surface_h[d_list])
-            full_terrain_h[d_list] = np.where(full_terrain_h[d_list] == 0, dtm_array[(y_idx, x_idx)], full_terrain_h[d_list])
+                # Get the bounds and CRS of the DSM file
+                bounds = dsm_tif.bounds
 
-        # If surface already completed for that segment, break out of that segment (for speed purpose)
-        if 0 not in full_surface_h[d_list]:
-            segment_already_full.append(itrsct)
+                # CRS for WGS84 (lat lon coordinate system)
+                src_crs = pyproj.CRS.from_epsg(4326)
+
+                # CRS for current HRDEM tile
+                dst_crs = pyproj.CRS.from_wkt(dsm_tif.crs.wkt)
+
+                # Define the transformer to convert from the source CRS to the tile's CRS
+                transformer = pyproj.Transformer.from_crs(src_crs, dst_crs)
+
+                # Transform the lat lon coordinates to the HRDEM tile's CRS
+                x_coords, y_coords = transformer.transform(tx_rx_path_lat_lon[0], tx_rx_path_lat_lon[1])
+
+                # Extract indices that fall within the tile
+                tx_rx_path_indices = np.where((x_coords >= bounds[0]) & (x_coords <= bounds[2]) & (y_coords >= bounds[1]) & (
+                        y_coords <= bounds[3]))[0]
+
+                # Get the row and column DTM and DSM file indices for the indices on the path that fall within the tile
+                row_indices, col_indices = dsm_tif.index(x_coords[tx_rx_path_indices], y_coords[tx_rx_path_indices])
+
+                if len(tx_rx_path_indices) == 0:
+                    continue
+
+                step = 1000
+
+                # Read the window from the DSM and DTM files in chunks (speeds up the download process)
+                for i in range(0, len(tx_rx_path_indices), step):
+                    # Get the indices and file coordinates for the chunk
+                    tx_rx_path_chunk_indices = tx_rx_path_indices[i:i + step] if i + step < len(tx_rx_path_indices) else tx_rx_path_indices[i:]
+                    chunk_row_indices = row_indices[i:i + step] if i + step < len(tx_rx_path_indices) else row_indices[i:]
+                    chunk_col_indices = col_indices[i:i + step] if i + step < len(tx_rx_path_indices) else col_indices[i:]
+
+                    # Get the min and max file indices to download for the chunk
+                    min_col_index = min(chunk_col_indices)
+                    max_col_index = max(chunk_col_indices)
+                    min_row_index = min(chunk_row_indices)
+                    max_row_index = max(chunk_row_indices)
+
+                    # Download the chunk of the DSM and DTM files
+                    dsm_array = dsm_tif.read(1, window=(
+                    (min_row_index, max_row_index + 1), (min_col_index, max_col_index + 1)))
+
+                    dtm_array = dtm_tif.read(1, window=(
+                    (min_row_index, max_row_index + 1), (min_col_index, max_col_index + 1)))
+
+                    # Replace negative elevation values
+                    dsm_array[dsm_array < 0] = 0
+                    dtm_array[dtm_array < 0] = 0
+
+                    # Adjust the row and col indices to match the index of the downloaded chunk's array
+                    chunk_row_indices = [row - min_row_index for row in chunk_row_indices]
+                    chunk_col_indices = [col - min_col_index for col in chunk_col_indices]
+
+                    # Replace empty (represented as 0) values with the new DSM and DTM values
+                    full_surface_h[tx_rx_path_chunk_indices] = np.where(full_surface_h[tx_rx_path_chunk_indices] == 0,
+                                                           dsm_array[(chunk_row_indices, chunk_col_indices)],
+                                                           full_surface_h[tx_rx_path_chunk_indices])
+
+                    full_terrain_h[tx_rx_path_chunk_indices] = np.where(full_terrain_h[tx_rx_path_chunk_indices] == 0,
+                                                           dtm_array[(chunk_row_indices, chunk_col_indices)],
+                                                           full_terrain_h[tx_rx_path_chunk_indices])
+
+
+            # If surface already completed for that segment, break out of that segment (speeds up the process)
+            if 0 not in full_surface_h[tx_rx_path_indices]:
+                segment_already_full.append(itrsct)
 
     return full_surface_h, full_terrain_h
 
 
-def replace_terrain_if_no_hrdem(tx, rx, terrain_h):
-    
-    # Get heading in order to get elevation in a direction
-    direction = get_heading((rx.lat, rx.lon), (tx.lat, tx.lon))
+def return_land_cover_profile(lat_lon, tower_latlon, distance_to_tower):
 
-    hrdem_available = True
-    if terrain_h[0] == 0:
-        hrdem_available = False
-        terrain_h = replace_elevation_profile(terrain_h, direction, (tx.lat, tx.lon))
+    # Get the interpolated lat lon coordinates along the path from the tower to the receiver
+    tx_rx_path_lat_lon = compute_tx_rx_path(lat_lon, tower_latlon, distance_to_tower)
 
-    # If terrain is missing at the Rx
-    if terrain_h[-1] == 0:
-        hrdem_available = False
-        terrain_h = replace_elevation_profile(terrain_h, direction, (rx.lat, rx.lon), inverted=True)
-        
-    return hrdem_available, terrain_h
+    # Initialize ESA profile array
+    dlu_profile = np.zeros(distance_to_tower)
 
+    # Get the ESA tiles that intersect the path from the tower to the receiver
+    esa_intersection_line = get_esa_along_path(lat_lon, tower_latlon)
 
-def replace_elevation_profile(elevation, direction_LOS, pointA, surface='cdem', inverted = False):
-    
-    if inverted :
-        pointB = pointA
-        distance = np.where(elevation == 0)[0][-1] - np.where(elevation == 0)[0][0]
-        destinationA = geodesic(kilometers=float(distance/1000)).destination(pointA, direction_LOS)
-        pointA = (destinationA.latitude, destinationA.longitude)
-    else:
-        distance = np.where(elevation == 0)[0][-1] + 1
-        destinationB = geodesic(kilometers=float(distance/1000)).destination(pointA, direction_LOS+180)
-        pointB = (destinationB.latitude, destinationB.longitude)
-    
-    # Number of steps to API    
-    steps = int(distance/30)
+    # Loop through the ESA tiles that intersect the path
+    for tile in esa_intersection_line:
+        # Get the ESA tile's S3 path
+        esa_tile_s3_path = f"s3://esa-worldcover/v200/2021/map/ESA_WorldCover_10m_2021_v200_{tile}_Map.tif"
 
-    # print("Accessing Geogratis API for elevation at 30m resolution")
-    url_terrain=f"http://geogratis.gc.ca/services/elevation/{surface}/profile?path=LINESTRING({pointA[1]}%20{pointA[0]},%20{pointB[1]}%20{pointB[0]})&steps={steps}"
-    request_terrain = requests.get(url_terrain)
-    full_terrain = np.zeros(len(elevation))
+        with rio.open(esa_tile_s3_path) as esa_tif:
 
-    if request_terrain.status_code == 200:
-        
-        terrain_ld = [element['altitude'] if element['altitude'] is not None else 0 for element in request_terrain.json()]
-        if terrain_ld:
-            xvals = np.linspace(0, len(terrain_ld), distance)
-            new_terrain = np.interp(xvals, range(len(terrain_ld)), terrain_ld)
+            bounds = esa_tif.bounds
 
-            # When it is only zeros
-            if np.array_equal(full_terrain, elevation):
-                full_terrain = new_terrain
-            elif inverted:
-                full_terrain[-distance:] = new_terrain
-                full_terrain[:-distance] = elevation[:-distance]
-            else:
-                full_terrain[:distance] = new_terrain
-                full_terrain[distance:] = elevation[distance:]
-    else:
-        full_terrain = elevation
-        
-    return full_terrain
+            # Extract indices that fall within the tile
+            tx_rx_path_indices = np.where((tx_rx_path_lat_lon[1] >= bounds[0]) & (tx_rx_path_lat_lon[1] <= bounds[2]) & (tx_rx_path_lat_lon[0] >= bounds[1]) & (
+                    tx_rx_path_lat_lon[0] <= bounds[3]))[0]
+
+            # Get the row and column ESA file indices for the indices that fall within the tile
+            row_indices, col_indices = esa_tif.index(tx_rx_path_lat_lon[1][tx_rx_path_indices], tx_rx_path_lat_lon[0][tx_rx_path_indices])
+
+            if len(tx_rx_path_indices) == 0:
+                continue
+
+            # Get the min and max ESA file indices to download for the ESA tile
+            min_col_index = min(col_indices)
+            max_col_index = max(col_indices)
+            min_row_index = min(row_indices)
+            max_row_index = max(row_indices)
+
+            # Download the ESA tile within the specified bounds
+            esa_tile_array = esa_tif.read(1, window=((min_row_index, max_row_index + 1), (min_col_index, max_col_index + 1)))
+
+            # Adjust the row and col indices to match the index of the downloaded tile array
+            row_indices = [row - min_row_index for row in row_indices]
+            col_indices = [col - min_col_index for col in col_indices]
+
+            # Set the dlu profile values to the corresponding ESA tile values
+            dlu_profile[tx_rx_path_indices] = esa_tile_array[(row_indices, col_indices)]
+
+    return dlu_profile
