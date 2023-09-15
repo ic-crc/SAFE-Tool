@@ -52,15 +52,6 @@ def get_p1812_output(d, h, R, Ct, zone, tx, rx):
     return round(Lb, 6)
 
 
-def get_theta(rx, tx, elevProfile, distance_to_tower):
-    
-    # Get path angle in degrees
-    y = (tx.height + elevProfile[0]) -  (rx.height + elevProfile[-1]) # Tx height - ODU height
-    x = distance_to_tower
-    
-    return np.degrees(np.arctan(y/x))
-
-
 def get_SAFE_path_loss(tx, rx, p1812_path_loss_no_clutter, foliage_depth, avg_tree_h, theta):
     
     # Ret model

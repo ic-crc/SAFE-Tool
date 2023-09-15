@@ -1,5 +1,9 @@
 import numpy as np
 import math
+import warnings
+
+# Suppress warnings
+warnings.filterwarnings("ignore")
 
 ### Useful functions
 
@@ -70,31 +74,31 @@ def ret_model_computation(Depth_fromPipeline, thetaP_fromPipeline, frequency, Rx
         b =  70
         W = 0.78
         sigmaT = 0.215
-        
+
     elif(Foliage_type == 'deciduous' and in_leaf == True):
         a = 0.95
         b = 42
         W = 0.95
         sigmaT = 0.147
-        
+
     elif(Foliage_type == 'deciduous' and in_leaf == False):
         a = 0.90
         b = 16
         W = 0.95
         sigmaT = 0.221
-        
+
     elif(Foliage_type == 'mixed' and in_leaf == True):
         a = 0.825
         b = 56
         W = 0.865
         sigmaT = 0.181
-    
+
     elif(Foliage_type == 'mixed' and in_leaf == False):
         a = 0.8
         b = 43
         W = 0.95
         sigmaT = 0.218
-        
+
     else:
         # nominal tree
         a = 0.92 # ratio of forward-sctt power to total

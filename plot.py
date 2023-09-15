@@ -1,47 +1,48 @@
-from os.path import join, normpath, basename
-from scipy.ndimage import gaussian_filter1d
+from os.path import join
 import matplotlib.pyplot as plt
 
-def plot_tx_to_rx_path(surface_h, terrain_h, tx_height, rx_height, save_folder):
-    
+land_cover_colors = {0: "#000000", 10: "#006400", 20: "#ffbb22", 30: "#ffff4c", 40: "#f096ff", 50: "#fa0000", 60: "#b4b4b4", 70: "#f0f0f0", 80: "#0064c8", 90: "#0096a0", 95: "#00cf75", 100: "#fae6a0"}
+
+def plot_tx_to_rx_path(surface_height, terrain_height, clutter_path, tx_height, rx_height, save_folder, index):
+
     fig, ax = plt.subplots(figsize=(15,5))
-    odu_pos = len(surface_h)
-    
-    index = basename(normpath(save_folder))
     ax.set_title(f"2D elevation profile - Index {index}")
-    
+
     # Set background and scale
     ax.set_facecolor('skyblue')
     ax.set_xlabel("Axes are not equally scaled",  style='italic', loc='right')
+
+    # Add Transmitter and Receiver
+    odu_pos = len(surface_height)
+    ax.plot([0, 0], [tx_height + terrain_height[0], terrain_height[0]], 'navy', linewidth=4)
+    ax.plot([odu_pos, odu_pos], [terrain_height[-1], rx_height + terrain_height[-1]], 'orange', linewidth=4)
     
-    # Add path
-    ax.plot([0, odu_pos], [tx_height + terrain_h[0], rx_height + terrain_h[-1]], 'r-')
-
-    # Add tower
-    ax.plot([0, 0], [tx_height + terrain_h[0], terrain_h[0]], 'navy', linewidth=4)
-
+    # Add signal radio path
+    ax.plot([0, odu_pos], [tx_height + terrain_height[0], rx_height + terrain_height[-1]], 'r-')
+    
+    width = 0
+    high_resolution_plot = (len(surface_height) < 3000)
+    step = 1 if high_resolution_plot else 10
+    
     # Add surface
-    coords = [[idx,h] for idx, h in enumerate(surface_h)]
-    xs, ys = zip(*coords)
-    sigma = 1
-    xs = list(xs); ys = list(gaussian_filter1d(ys, sigma))
-    xs = list(xs); ys = list(ys)
-    xs.append(odu_pos); ys.append(min(terrain_h)-3)
-    xs.append(0); ys.append(min(terrain_h)-3)
-    xs.append(xs[0]); ys.append(ys[0])
-    ax.fill(xs, ys, 'g-') 
-    
+    for clutter, h in zip(clutter_path, surface_height):
+        if width % step == 0:
+            coords = [[width, h]]
+            coords.append([width, min(terrain_height)-3])
+            coords.append([width+step, min(terrain_height)-3])
+            coords.append([width+step, h])
+            coords.append(coords[0])
+            xs, ys = zip(*coords)
+            ax.fill(xs, ys, land_cover_colors.get(clutter, "skyblue"))
+        width += 1
+
     # Add terrain
-    coords = [[idx,h] for idx, h in enumerate(terrain_h)]
-    coords.append([odu_pos, min(terrain_h)-3])
-    coords.append([0, min(terrain_h)-3])
+    coords = [[idx,h] for idx, h in enumerate(terrain_height)]
+    coords.append([odu_pos, min(terrain_height)-3])
+    coords.append([0, min(terrain_height)-3])
     coords.append(coords[0])
     xs, ys = zip(*coords) #create lists of x and y values
-    ax.fill(xs, ys, 'saddlebrown') 
+    ax.fill(xs, ys, 'saddlebrown')
 
-    # Add rx
-    ax.plot([odu_pos, odu_pos], [terrain_h[-1], rx_height + terrain_h[-1]], 'orange', linewidth=4)
-    
     fig.tight_layout()
-    fig.savefig(join(save_folder, 'path.png'))
-    plt.close(fig)
+    fig.savefig(join(save_folder, f'path{index}.png'))
