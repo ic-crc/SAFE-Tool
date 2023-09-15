@@ -42,26 +42,18 @@ def compute_safe_metrics(index, tx, rx):
 	 get_SAFE_path_loss(tx, rx, p1812_no_clutter, total_clutter_depth, avg_clutter_h_in_path, theta) if hrdem_available else (0, 0, 0, p1812_no_clutter)
 	
 	# Plot and save path profile
-	print("Plotting path profile\n")
-	save_folder = join(dirname(realpath(__file__)), "data")
-	makedirs(save_folder, exist_ok=True)
-	plot_tx_to_rx_path(surface_height, terrain_height, clutter_path, tx.height, rx.height, save_folder, index)
+	# print("Plotting path profile\n")
+	# save_folder = join(dirname(realpath(__file__)), "data")
+	# makedirs(save_folder, exist_ok=True)
+	# plot_tx_to_rx_path(surface_height, terrain_height, clutter_path, tx.height, rx.height, save_folder, index)
 	
 	return {
 		"index": index,
-		"hrdem_available": hrdem_available,
 		"link_distance": distance_to_tower,
-		"tree_loss_ret": round(tree_loss, 2) if tree_loss > 0 else 0,
-		"top_diffraction_loss": round(top_diffraction, 2),
-		"ret_plus_top": round(ret_plus_top, 2),
-		"total_terrain_depth": round(total_terrain_depth, 2),
 		'clutter_path_by_type': clutter_path_by_type,
 		"clutter_depth_by_type": clutter_depth_by_type,
 		"total_clutter_depth": total_clutter_depth,
-		"avg_clutter_h_by_type": avg_clutter_h_by_type,
-		"avg_clutter_h_in_path": avg_clutter_h_in_path,
-		"first_intersection_point_m": first_intersection_point_m,
-		"last_intersection_point_m": last_intersection_point_m,
+		"total_terrain_depth": round(total_terrain_depth, 2),
 		"p1812_path_loss_no_clutter": round(p1812_no_clutter, 2),
 		"p1812_path_loss": round(p1812_path_loss, 2),
 		"safe_path_loss": round(safe_path_loss, 2)
