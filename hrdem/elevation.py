@@ -47,7 +47,7 @@ def return_elevation_profile(lat_lon, tower_latlon, distance_to_tower):
                 src_crs = pyproj.CRS.from_epsg(4326)
 
                 # CRS for current HRDEM tile
-                dst_crs = pyproj.CRS.from_wkt(dsm_tif.crs.wkt)
+                dst_crs = dsm_tif.crs
 
                 # Define the transformer to convert from the source CRS to the tile's CRS
                 transformer = pyproj.Transformer.from_crs(src_crs, dst_crs)
